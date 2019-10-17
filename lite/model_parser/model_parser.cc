@@ -204,11 +204,13 @@ void LoadCombinedParamsPb(const std::string &path,
                     << " LoadCombinedParamsPb, use LoadParam instead.";
   };
 
+    LOG(INFO) <<"_______0____"<<path;
   if (params_from_memory) {
     std::stringstream fin(path, std::ios::in | std::ios::binary);
     load_var_func(fin);
   } else {
     std::ifstream fin(path, std::ios::binary);
+    LOG(INFO) <<"____else_______"<<path;
     CHECK(fin.is_open());
     load_var_func(fin);
   }

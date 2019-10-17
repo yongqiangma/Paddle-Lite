@@ -41,7 +41,12 @@ void TargetWrapperCuda::MemcpySync(void* dst,
       CUDA_CALL(cudaMemcpy(dst, src, size, cudaMemcpyDeviceToDevice));
       break;
     case IoDirection::HtoD:
+      VLOG(4) << "==================HtoD=before================== " << size;
+      for(int i =size/4;i >size/4 -10;i--){
+//	LOG(INFO) <<"i:"<<i<<"   "<< ((float*)src)[i];	
+      }
       CUDA_CALL(cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice));
+      VLOG(4) << "==================HtoD==after================= " << size;
       break;
     case IoDirection::DtoH:
       CUDA_CALL(cudaMemcpy(dst, src, size, cudaMemcpyDeviceToHost));

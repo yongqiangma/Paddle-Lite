@@ -54,6 +54,7 @@ class IoCopyHostToCudaCompute
     VLOG(4) << "copy size " << mem_size;
     auto* data = param.y->mutable_data(TARGET(kCUDA), mem_size);
     CopyFromHostSync(data, param.x->raw_data(), mem_size);
+    VLOG(4) << "copy size------- " << mem_size;
   }
 
   std::unique_ptr<type_infer_handler_t> GetTypeInferHandler() override {

@@ -109,6 +109,9 @@ TEST(Scale, performance) {
   Place place(TARGET(kARM));
 #endif
 
+#ifdef LITE_WITH_CUDA
+  Place place(TARGET(kARM));
+#endif
   std::unique_ptr<arena::TestCase> tester(
       new ScaleComputeTester(place, "def", 1.2, 1.1, true));
 

@@ -34,6 +34,18 @@ list(APPEND CUDNN_CHECK_LIBRARY_DIRS
 	${CUDA_TOOLKIT_ROOT_DIR}
 	${CUDA_TOOLKIT_ROOT_DIR}/lib/x64
 	)
+
+
+set(CUBLAS_LIB_NAME "libcublas.so")
+
+#find_library(CUDA_CUBLAS_LIBRARIES NAMES ${CUBLAS_LIB_NAME}
+#	PATHS ${CUDNN_CHECK_LIBRARY_DIRS} 
+#          NO_DEFAULT_PATH
+#    DOC "Path to cublas library.")
+
+message(STATUS "----------00000--------------------------- ${CUDA_CUBLAS_LIBRARIES}")
+message(STATUS "----------00000CUDNN_CHECK_LIBRARY_DIRS--------------------------- ${CUDNN_CHECK_LIBRARY_DIRS}")
+set(CUDA_CUBLAS_LIBRARIES1 "/usr/local/cuda-10.0/lib64/libcublas.so")
 set(CUDNN_LIB_NAME "libcudnn.so")
 
 if(WIN32)

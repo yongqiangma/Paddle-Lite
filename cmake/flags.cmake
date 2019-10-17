@@ -146,8 +146,9 @@ set(GPU_COMMON_FLAGS
     -Wno-error=unused-local-typedefs
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
+    -gencode arch=compute_62,code=sm_62
 )
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
 endif(NOT WIN32)
 
 if (APPLE)

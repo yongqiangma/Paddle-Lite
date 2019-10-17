@@ -618,12 +618,12 @@ function build_test_arm_subtask_android {
     port_armv8=5554
     port_armv7=5556
 
-    prepare_emulator $port_armv8 $port_armv7
+    #prepare_emulator $port_armv8 $port_armv7
 
     # job 1
     build_arm "android" "armv8" "gcc"
-    run_gen_code_test ${port_armv8}
-    test_arm "android" "armv8" "gcc" ${port_armv8}
+    #run_gen_code_test ${port_armv8}
+    #test_arm "android" "armv8" "gcc" ${port_armv8}
     cd -
 
     # job 2
@@ -633,10 +633,10 @@ function build_test_arm_subtask_android {
     #cd -
 
     # job 3
-    build_arm "android" "armv7" "gcc"
-    run_gen_code_test ${port_armv7}
-    test_arm "android" "armv7" "gcc" ${port_armv7}
-    cd -
+    #build_arm "android" "armv7" "gcc"
+    #run_gen_code_test ${port_armv7}
+    #test_arm "android" "armv7" "gcc" ${port_armv7}
+    #cd -
 
     # job 4
     #build_arm "android" "armv7" "clang"
@@ -644,7 +644,7 @@ function build_test_arm_subtask_android {
     #test_arm "android" "armv7" "clang" ${port_armv7}
     #cd -
 
-    adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
+    #adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
     echo "Done"
 }
 
@@ -719,11 +719,11 @@ function test_arm_predict_apis {
 function build_test_arm {
     ########################################################################
     # job 1-4 must be in one runner
-    port_armv8=5554
-    port_armv7=5556
+    #port_armv8=5554
+    #port_armv7=5556
 
     build_test_arm_subtask_android
-    build_test_arm_subtask_armlinux
+    #build_test_arm_subtask_armlinux
 }
 
 function build_test_npu {

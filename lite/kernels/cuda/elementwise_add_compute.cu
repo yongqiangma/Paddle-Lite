@@ -29,18 +29,16 @@ void ElementwiseAddCompute::Run() {
   const lite::Tensor* y = param.Y;
   lite::Tensor* out = param.Out;
 
-  CHECK(x->dims() == y->dims());
+  LOG(INFO)<<"x-dims:"<<x->dims() <<"y->dims:"<< y->dims();
+  CHECK(x->dims().production() == y->dims().production());
 
-  const int n = x->dims()[0];
-  const int c = x->dims()[1];
-  const int h = x->dims()[2];
-  const int w = x->dims()[3];
 
   auto* x_data = x->data<float>();
   auto* y_data = y->data<float>();
   auto out_data = out->mutable_data<float>(TARGET(kCUDA));
 
   int pixel_num = x->numel();
+  LOG(INFO)<<"x-mum:"<<x->numel();
   lite::cuda::math::elementwise_add(
       pixel_num, x_data, y_data, out_data, stream);
 
@@ -57,12 +55,8 @@ void ElementwiseAddComputeNHWC::Run() {
   const lite::Tensor* y = param.Y;
   lite::Tensor* out = param.Out;
 
-  CHECK(x->dims() == y->dims());
+  CHECK(x->dims().production() == y->dims().production());
 
-  const int n = x->dims()[0];
-  const int c = x->dims()[1];
-  const int h = x->dims()[2];
-  const int w = x->dims()[3];
 
   auto* x_data = x->data<float>();
   auto* y_data = y->data<float>();
@@ -85,7 +79,7 @@ void ElementwiseAddComputeInt8::Run() {
   const lite::Tensor* y = param.Y;
   lite::Tensor* out = param.Out;
 
-  CHECK(x->dims() == y->dims());
+  CHECK(x->dims().production() == y->dims().production());
 
   const int c = x->dims()[3];
 
