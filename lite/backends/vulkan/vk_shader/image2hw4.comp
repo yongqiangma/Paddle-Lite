@@ -1,0 +1,38 @@
+#version 450 core
+layout(std430) buffer;
+layout(std430) uniform;
+layout(set=0, binding=0) uniform mediump sampler2D in_;
+
+layout(set=0, binding=1) writeonly buffer destBuffer{
+    float data[];
+} out_;
+
+layout(set=0, binding=2) uniform constBuffer{
+    int height;
+    int width;
+    int im_w;
+    int im_h;
+} param;
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+void main()
+{
+    ivec2 pos = ivec2(gl_GlobalInvocationID);
+    int h_step = min(param.im_h, 4);
+    if (pos.x < param.im_w && pos.y < param.im_h)
+    {
+        int scale = pos.y*param.width + pos.x*4;
+
+
+        vec4 data = texelFetch(in_, pos, 0);
+        out_.data[scale] = data.r;
+        out_.data[scale + 1] = data.g;
+        out_.data[scale + 2] = data.b;
+        out_.data[scale + 3] = data.a;
+
+       
+    }
+        //out_.data[15] = 11;//data.r;
+
+}

@@ -1,0 +1,33 @@
+#version 450
+
+
+layout(std430) buffer;
+layout(std430) uniform;
+layout(set=0, binding=0) uniform mediump sampler3D uInput;
+layout(set=0, binding=1, rgba16f) writeonly restrict mediump uniform image3D uOutput;
+
+
+layout(set = 0, binding = 2) uniform bbBuffer{
+    ivec4 in_dim;
+    //float slope;
+}uReluParam;
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+void main()
+{
+    ivec3 pos = ivec3(gl_GlobalInvocationID);
+    //ivec3 imgSize = uReluParam.in_dim.rgba;
+    if(pos.x < uReluParam.in_dim.a && pos.y < uReluParam.in_dim.b){
+    
+        vec4 dataIn =  texelFetch(uInput, pos, 0);
+        bvec4 lessZero = bvec4(lessThan(dataIn, vec4(0.0)));
+        // dataIn = vec4(uReluParam.in_dim.b,uReluParam.in_dim.a, uReluParam.in_dim.g,uReluParam.in_dim.r);
+        vec4 dataTemp = dataIn * vec4(0);
+        //ivec3 id = ivec3(gl_WorkGroupID);
+
+        //dataIn = vec4(id.x + 10 * id.y + 100 * id.z);
+        imageStore(uOutput, pos, mix(dataIn, dataTemp, lessZero));
+        //imageStore(uOutput, pos, dataIn);
+    }
+}

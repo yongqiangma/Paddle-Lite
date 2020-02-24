@@ -1,0 +1,29 @@
+#version 450
+
+layout (binding = 0) buffer bottom_top_blob { float bottom_top_blob_data[]; };
+
+layout (binding = 1)  buffer dataout { float bottom_top_blob_dataout[]; };
+
+layout(set=0, binding=2) uniform constBuffer{
+    int n;
+    int c;
+    int h;
+    int w;
+} uConstant;
+
+void main()
+{
+
+    int gx = int(gl_GlobalInvocationID.x);
+    int gy = int(gl_GlobalInvocationID.y);
+    int gz = int(gl_GlobalInvocationID.z);
+
+    const int gi =   gy * 16 + gx;
+
+    float v = bottom_top_blob_data[gi];
+
+    bottom_top_blob_data[gi] = (v);
+    bottom_top_blob_dataout[gi] = (v) + uConstant.h*100;
+    //uConstant.h = 11;
+
+}

@@ -1,0 +1,50 @@
+#version 450
+
+layout(std430) buffer;
+layout(std430) uniform;
+layout(set=0, binding=0) readonly buffer inBuffer{
+    float data[];
+}in_;
+layout(set=0, binding=1) buffer outBuffer{
+    float data[];
+}out_;
+
+
+layout(set=0, binding=2) uniform bbBuffer{
+  int compute_size;
+  int axis_size;
+  int outer_num;
+  int inner_num;
+}param;
+
+layout(set=0, binding=3)  buffer tempBuffer{
+    float data[];
+}temp_;
+
+
+layout(local_size_x = 16, local_size_y = 116, local_size_z = 1) in;
+
+void main()
+{
+    ivec2 pos = ivec2(gl_GlobalInvocationID);
+    if(pos.x < param.outer_num  && pos.y < param.inner_num) {
+      int offset = pos.x * param.axis_size * param.inner_num + pos.y;
+      float fo = in_.data[offset];
+      for(int i = 1; i < param.axis_size; i++) {
+         fo = max(fo, in_.data[offset+param.inner_num * i]); 
+      }
+      //out_.data[pos.y ] = fo;
+      //out_.data[pos.x] = 100;
+      float sum = 0;    
+      for(int i = 0; i < param.axis_size; i++) {
+        temp_.data[offset + param.inner_num * i] = exp(in_.data[offset + param.inner_num * i] - fo);
+        sum += temp_.data[offset + param.inner_num * i];
+        //out_.data[offset + param.inner_num * i] = fo - in_.data[offset + param.inner_num * i];
+        //out_.data[pos.x] = fo - in_.data[offset + param.inner_num * i];
+      }
+      for(int i = 0; i < param.axis_size; i++) {
+        out_.data[offset + param.inner_num * i] = temp_.data[offset + param.inner_num * i] / sum;
+      }
+      
+    }
+}

@@ -1,0 +1,87 @@
+#version 450
+
+
+layout(std430) buffer;
+layout(std430) uniform;
+layout(set=0, binding=0) uniform mediump sampler3D uInput;
+layout(set=0, binding=1, rgba16f) writeonly restrict mediump uniform image3D uOutput;
+
+
+layout(set = 0, binding = 2) uniform paramBuffer{
+    ivec4 input_dim;
+    ivec4 filter_dim;
+    ivec4 out_dim;
+    ivec2 strides;
+    ivec2 pads;
+    ivec2 dilations;
+    ivec2 out_im;
+    bvec2 flag;
+}param;
+
+layout(set = 0, binding = 3) uniform mediump sampler3D kernels;
+layout(set = 0, binding = 4) readonly buffer biasBuffer{ 
+    float data[];
+}bias;
+
+
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+void main()
+{
+    ivec3 pos = ivec3(gl_GlobalInvocationID);
+    //ivec3 out_size = ivec3(2);
+    int out_dim_x = param.out_dim.a;
+    int out_dim_y = param.out_dim.b;
+    int in_dim_x = param.input_dim.a;
+    int in_dim_y = param.input_dim.b;
+    ivec2 in_dim_xy = param.input_dim.ab;
+    int kx_i, ky_i;
+    int c_i = 0;
+    int ksize = param.filter_dim.b * param.filter_dim.a;
+    if( all(lessThan(pos.xy, param.out_im.xy))) {
+        int kh, kw;
+        vec4 k, k1, k2,k3;
+        vec4 out_data = vec4(0);
+        int x_i, y_i;
+        x_i = (pos.x/out_dim_x) * in_dim_x;
+        y_i = (pos.y/out_dim_y) * in_dim_y;
+        kx_i = (pos.x/out_dim_x) * param.filter_dim.a;
+        c_i = (pos.x/out_dim_x)*4;
+        ky_i = (pos.y/out_dim_y) * param.filter_dim.b;
+        //int k_scale = kx_i * ksize *4 + ky_i * ksize * param.filter_dim.r;
+        int posx = pos.x%out_dim_x;
+        int posy = pos.y%out_dim_y;
+        ivec2 sin_xy = ivec2((pos.x%out_dim_x) * param.strides.x -param.pads.x,(pos.y%out_dim_y) * param.strides.y -param.pads.y); 
+        ivec2 sfxy = max(ivec2(0), -sin_xy);
+        ivec2 efxy = min(param.filter_dim.ab,in_dim_xy -sin_xy);
+        //for(kh = 0; kh < param.filter_dim.b; kh++){
+         //  for(kw = 0; kw < param.filter_dim.a; kw++){
+        for (kh=sfxy.y; kh<efxy.y; ++kh){
+            for (kw=sfxy.x; kw<efxy.x; ++kw){
+                /*k = vec4(ukernel.data[kh * param.filter_dim.a + kw +k_scale], 
+                        ukernel.data[kh * param.filter_dim.a + kw + k_scale+ ksize*1], 
+                        ukernel.data[kh * param.filter_dim.a + kw + k_scale + ksize*2],
+                        ukernel.data[kh * param.filter_dim.a + kw + k_scale + ksize*3]);
+                */
+                    k = texelFetch(kernels, ivec3( kx_i + kw, kh, 0), 0);
+
+
+                vec4 in_ = texelFetch(uInput, ivec3(x_i+(pos.x%out_dim_x) * param.strides.x -param.pads.x +kw , y_i+ (pos.y%out_dim_y) * param.strides.y -param.pads.y +kh, 0), 0);
+                
+                out_data += k * in_;
+                //out_data = vec4(pos.x);
+
+            }
+
+        }
+
+        out_data += vec4(bias.data[c_i],bias.data[c_i+1],bias.data[c_i+2],bias.data[c_i+3]);
+#ifdef _RELU
+        out_data = max(out_data, vec4(0));
+#endif
+        imageStore(uOutput, pos, out_data);
+
+    }
+}
+

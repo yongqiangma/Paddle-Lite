@@ -1,0 +1,107 @@
+#version 450 core
+layout(std430) buffer;
+layout(std430) uniform;
+layout(set=0, binding=0) uniform mediump sampler3D uInput;
+
+layout(set=0, binding=1) writeonly buffer destBuffer{
+    float data[];
+} uOutBuffer;
+
+layout(set=0, binding=2) uniform constBuffer{
+    int batch;
+    int channel;
+    int height;
+    int width;
+    int im_w;
+    int im_h;
+} uConstant;
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+void main()
+{
+    ivec3 pos = ivec3(gl_GlobalInvocationID);
+    int c = uConstant.channel > 4 ? 4 : uConstant.channel; 
+
+    int channelC4 = (uConstant.channel + 3) / 4;
+    int batchIndex = pos.z / channelC4;
+    int zDiv4 = pos.z % channelC4;
+
+    int cIndex = uConstant.channel % 4;
+    int lastZ = uConstant.channel - cIndex;
+
+    int im = uConstant.height * uConstant.width;
+    int im_out = uConstant.im_w * uConstant.im_h;
+    if (pos.x < uConstant.im_w && pos.y < uConstant.im_h)
+    {
+        int im_w_cnt = pos.x / 4;
+        int im_w_cnt_ = pos.x % 4;
+
+        int basicOffset = (pos.y * uConstant.im_w ) + pos.x;
+        //int 
+        vec4 color = texelFetch(uInput, pos, 0);
+        uOutBuffer.data[basicOffset+0] = color.r;
+        uOutBuffer.data[basicOffset+im_out] = color.g;
+        uOutBuffer.data[basicOffset+im_out*2] = color.b;
+        uOutBuffer.data[basicOffset+im_out*3] = color.a;
+
+        
+        /*
+        if(pos.x > lastZ)
+        {
+            if(cIndex == 1)
+            {
+                uOutBuffer.data[basicOffset+0] = color.r;
+            }
+            else if(cIndex == 2)
+            {
+                uOutBuffer.data[basicOffset+0] = color.r;
+                uOutBuffer.data[basicOffset+1] = color.g;
+            }
+            else if(cIndex == 3)
+            {
+                uOutBuffer.data[basicOffset+0] = color.r;
+                uOutBuffer.data[basicOffset+1] = color.g;
+                uOutBuffer.data[basicOffset+2] = color.b;
+            }
+        }
+        else
+        {
+            uOutBuffer.data[basicOffset+0] = color.r;
+            uOutBuffer.data[basicOffset+1] = color.g;
+            uOutBuffer.data[basicOffset+2] = color.b;
+            uOutBuffer.data[basicOffset+3] = color.a;
+        }
+
+            
+
+        if(pos.x > lastZ)
+        {
+            if(cIndex == 1)
+            {
+                uOutBuffer.data[basicOffset+0] = basicOffset;
+            }
+            else if(cIndex == 2)
+            {
+                uOutBuffer.data[basicOffset+0] = basicOffset;
+                uOutBuffer.data[basicOffset+1] = basicOffset+1;
+            }
+            else if(cIndex == 3)
+            {
+                uOutBuffer.data[basicOffset+0] = basicOffset;
+                uOutBuffer.data[basicOffset+1] = basicOffset+1;
+                uOutBuffer.data[basicOffset+2] = basicOffset+2;
+            }
+        }
+        else
+        {
+            uOutBuffer.data[basicOffset+0] = basicOffset;
+            uOutBuffer.data[basicOffset+1] = basicOffset+1;
+            uOutBuffer.data[basicOffset+2] = basicOffset+2;
+            uOutBuffer.data[basicOffset+3] = basicOffset+3;
+        }
+    */        
+    }
+
+
+}

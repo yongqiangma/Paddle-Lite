@@ -15,7 +15,6 @@
 #pragma once
 #include <algorithm>
 #include <memory>
-#include "lite/backends/vulkan/vk_buffer.h"
 #include "lite/backends/vulkan/vk_device.h"
 #include "lite/core/kernel.h"
 #include "lite/core/op_registry.h"

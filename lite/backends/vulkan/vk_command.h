@@ -13,35 +13,41 @@
 // limitations under the License.
 
 #pragma once
-#include <algorithm>
+
+#include <cstdarg>
 #include <memory>
 #include <string>
 #include <vector>
+#include "lite/core/tensor.h"
+#include "lite/utils/cp_logging.h"
 
+#ifdef LITE_WITH_VULKAN
+#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 #include "lite/backends/vulkan/vk_device.h"
-#include "lite/core/kernel.h"
-#include "lite/core/op_registry.h"
-#include "lite/kernels/vulkan/vulkan_utils.h"
+#endif
 
 namespace paddle {
 namespace lite {
-namespace kernels {
 namespace vulkan {
 
-class SoftmaxCompute : public KernelLite<TARGET(kVULKAN), PRECISION(kFloat)> {
+#ifdef LITE_WITH_VULKAN
+
+void init_command_pool(const struct vk_device &vk_device_);
+
+class VulkanCommand {
  public:
-  void PrepareForRun() override;
-  void Run() override;
-
-  virtual ~SoftmaxCompute() = default;
-
- private:
-  operators::SoftmaxParam param;
-  std::vector<VkCommandBuffer> cmds;
-  std::shared_ptr<lite::vulkan::VulkanDevice> device;
+  VulkanCommand();
+  explicit VulkanCommand(std::shared_ptr<VulkanDevice> dev);
+  void Init(std::shared_ptr<VulkanDevice> dev);
+  void Create(VkCommandPool *_pool);
+  ~VulkanCommand();
+  // private:
+  std::shared_ptr<VulkanDevice> vk_dev;
+  VkCommandPool cmd_pool;
 };
+#endif
 
 }  // namespace vulkan
-}  // namespace kernels
 }  // namespace lite
 }  // namespace paddle

@@ -1,0 +1,50 @@
+#version 440 core
+
+layout(std430) buffer;
+layout(std430) uniform;
+layout(set=0, binding=0) uniform mediump sampler2D in_im;
+layout(set=0, binding=1, rgba16f) writeonly restrict mediump uniform image2D out_im;
+
+
+layout(set=0, binding=2) uniform constBuffer {
+    ivec4 in_dims;
+    ivec4 out_dims;
+    ivec2 ksize;
+    ivec2 strides;
+    ivec2 paddings;
+    ivec2 out_im_dims;
+} param;
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+
+void main()
+{
+    ivec2 pos = ivec2(gl_GlobalInvocationID);
+    ivec2 out_im_xy = param.out_im_dims.xy;
+    ivec2 out_xy = param.out_dims.ba;
+
+
+    if (all(lessThan(pos, out_im_xy)))
+    {
+        ivec2 mod_xy = pos.xy % out_xy;
+        ivec2 div_xy = pos.xy / out_xy;
+        ivec2 spos = mod_xy*param.strides-param.paddings;
+        ivec2 in_xy = param.in_dims.ba;
+        ivec2 in_im_xy = div_xy * in_xy;
+        vec4 color = vec4(-65504.0);
+        ivec2 sfxy = max(ivec2(0), -spos);
+        ivec2 efxy = min(param.ksize, in_xy-spos);
+
+        for (int fy=sfxy.y; fy<efxy.y; ++fy)
+        {
+            for (int fx=sfxy.x; fx<efxy.x; ++fx)
+            {
+                ivec2 spos_ = spos + ivec2(fx, fy) + in_im_xy;
+                color = max(texelFetch(in_im, ivec2(spos_.x, spos_.y), 0), color);
+            }
+        }
+        imageStore(out_im, pos, color);
+    }
+
+}

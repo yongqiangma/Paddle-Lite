@@ -464,8 +464,8 @@ void VulkanPrintImage(std::shared_ptr<lite::vulkan::VulkanDevice> device,
 
   float* out_cpu_data2 =
       static_cast<float*>(malloc(sizeof(float) * output.numel()));
-  CopySync<TARGET(kVULKAN)>(reinterpret_cast<void*> out_cpu_data2,
-                            reinterpret_cast<void*> bufdataout,
+  CopySync<TARGET(kVULKAN)>(reinterpret_cast<void*>(out_cpu_data2),
+                            reinterpret_cast<void*>(bufdataout),
                             sizeof(float) * output.numel(),
                             IoDirection::DtoH);
   LOG(INFO) << "PrintImage:" << output.numel() << ": " << output.dims();

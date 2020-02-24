@@ -1,0 +1,37 @@
+#version 450
+
+layout(std430) buffer;
+layout(std430) uniform;
+layout(set=0, binding=0) readonly buffer inBuffer{
+    float data[];
+}in_;
+layout(set=0, binding=1) readonly buffer wBuffer{
+    float data[];
+} w_;
+layout(set=0, binding=2) readonly buffer bBuffer{
+    float data[];
+} b_;
+layout(set=0, binding=3) writeonly buffer outBuffer{
+    float data[];
+} out_;
+
+
+layout(set = 0, binding = 4) uniform bbBuffer{
+    ivec3 dims;
+}param;
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+void main()
+{
+    ivec2 pos = ivec2(gl_GlobalInvocationID);
+    if(pos.x < 1 && pos.y < param.dims.y) {
+    int offset = pos.y * param.dims.z;
+    float fo = 0;
+    for(int i = 0; i < param.dims.z; i++) {
+       fo += in_.data[i] * w_.data[offset + i]; 
+    }
+    out_.data[pos.y] = fo + b_.data[pos.y];
+    
+    }
+}

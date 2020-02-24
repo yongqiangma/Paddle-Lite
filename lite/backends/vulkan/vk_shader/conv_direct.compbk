@@ -1,0 +1,293 @@
+#version 450
+
+
+layout(std430) buffer;
+layout(std430) uniform;
+layout(set=0, binding=0) uniform mediump sampler3D uInput;
+layout(set=0, binding=1, rgba16f) writeonly restrict mediump uniform image3D uOutput;
+
+
+layout(set = 0, binding = 2) uniform paramBuffer{
+    ivec4 input_dim;
+    ivec4 filter_dim;
+    ivec4 out_dim;
+    ivec2 strides;
+    ivec2 pads;
+    ivec2 dilations;
+    ivec2 out_im;
+    bvec2 flag;
+}param;
+
+layout(set = 0, binding = 3) uniform mediump sampler3D ukernel;
+layout(set = 0, binding = 4) readonly buffer biasBuffer{ 
+    float data[];
+}bias;
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+void main()
+{
+    ivec3 pos = ivec3(gl_GlobalInvocationID);
+    //ivec3 out_size = ivec3(2);
+    int out_dim_x = param.out_dim.a;
+    int out_dim_y = param.out_dim.b;
+    int in_dim_x = param.input_dim.a;
+    int in_dim_y = param.input_dim.b;
+    int k_dim_x = param.filter_dim.a;
+    int k_dim_y = param.filter_dim.b;
+    int c_i = 0;
+    int ksize = param.filter_dim.b * param.filter_dim.a;
+    if( all(lessThan(pos.xy, param.out_im.xy))) {
+        int kh, kw;
+        vec4 k, k1, k2,k3;
+        vec4 out_data = vec4(0);
+        vec4 temp = vec4(0);
+        int x_i, y_i, y_b_i;
+        int kx_i, ky_i;
+        int ky_n = (param.filter_dim.r + 3 ) / 4;
+        int ky_c = (param.filter_dim.g +3 ) / 4;
+        c_i = (pos.x/out_dim_x)*4;
+
+        x_i = (pos.x/out_dim_x) * in_dim_x;
+        //y_i = (pos.y/out_dim_y/ky_n) * in_dim_y;
+        y_i = (pos.y/out_dim_y) * in_dim_y;
+        y_b_i = (pos.y/out_dim_y) * in_dim_y;
+        kx_i = (pos.x/out_dim_x)* k_dim_x * 4;
+        //kx_i = (pos.x/out_dim_x)* k_dim_x ;
+        ky_i = (pos.y/out_dim_y)* k_dim_y;
+        //int k_scale = kx_i * ksize *4 + ky_i * ksize * param.filter_dim.r;
+        float out_data_ = 0;
+        float marky = 0;
+        //for(int i =0; i<4; i++){
+        vec4 temp_in = vec4(0);
+        int c_x_i = param.filter_dim.r - (pos.x/out_dim_x)*4;
+        //int kh_c = param.filter_dim.r % 4;
+        //int kh_scale = param.filter_dim.r - kh_c;
+        int posx = pos.x%out_dim_x;
+        int posy = pos.y%out_dim_y;
+        int in_x;
+        int in_y;
+        int kw_i =0;
+        int kh_i =0;
+
+        for(int c =0; c < ky_c; c++)
+        {
+          temp = vec4(0);
+        in_x = c* in_dim_x+ (pos.x%out_dim_x) * param.strides.y - param.pads.x;
+        in_y = y_i + (pos.y % out_dim_y) * param.strides.x -param.pads.y;
+        if(c_x_i > 0){
+            for(kh = 0; kh < param.filter_dim.b; kh++){
+                for(kw = 0; kw < param.filter_dim.a; kw++){
+
+
+                    k = texelFetch(ukernel, ivec3(c* k_dim_x+ kw, kx_i + kh, 0), 0);
+                    //k = texelFetch(ukernel, ivec3(2,1, 0), 0);
+                    //vec4 in_ = texelFetch(uInput, ivec3(x_i+pos.x%out_dim_x +kw, y_i+ pos.y%out_dim_y +kh, 0), 0);
+                    vec4 in_ = texelFetch(uInput, ivec3( in_x+kw, in_y +kh, 0), 0);
+                    if(posx < param.pads.x ){
+                        if(kw < param.pads.x){
+                            kw_i = 1;
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            continue;
+                        }
+                        
+                    } else if(posx >= out_dim_x - param.pads.x){
+                        if(kw >= k_dim_x - param.pads.x){
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            continue;
+                        }
+
+                    }
+                    if(posy < param.pads.y){
+                        if(kh < param.pads.y){
+                            kh_i =1;
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            break;
+                        }
+                    }else if( posy >= out_dim_y - param.pads.y){
+                        if(kh >= k_dim_y - param.pads.y){
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            break;
+                        }
+                    }
+                    temp += k * in_;
+                    //temp_in = k;
+                    temp_in = in_;
+                    //temp_in = vec4(in_x+kw);
+                    //marky = c* in_dim_x+pos.x%out_dim_x +kw ;
+                    //marky = kx_i + kh;
+                }
+            }
+              out_data_ = temp.r + temp.g + temp.b + temp.a;
+              //out_data_ = param.strides.x;
+              //out_data.r = temp_in.r;
+              out_data.r += out_data_;
+              //out_data.r = temp_in.r;
+              //out_data.r = param.strides.y;
+        }
+        temp = vec4(0);
+        if(c_x_i > 1){
+             for(kh = 0; kh < param.filter_dim.b; kh++){
+                for(kw = 0; kw < param.filter_dim.a; kw++){
+
+                    k = texelFetch(ukernel, ivec3(c* k_dim_x+kw, kx_i + k_dim_y +kh, 0), 0);
+                    //vec4 in_ = texelFetch(uInput, ivec3(x_i+pos.x%out_dim_x +kw, y_i+ pos.y%out_dim_y +kh, 0), 0);
+                    vec4 in_ = texelFetch(uInput, ivec3(in_x + kw ,  in_y + kh , 0), 0);
+                    if(posx < param.pads.x ){
+                        if(kw < param.pads.x){
+                            kw_i = 1;
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            continue;
+                        }
+                        
+                    } else if(posx >= out_dim_x - param.pads.x){
+                        if(kw >= k_dim_x - param.pads.x){
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            continue;
+                        }
+
+                    }
+                    if(posy < param.pads.y){
+                        if(kh < param.pads.y){
+                            kh_i =1;
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            break;
+                        }
+                    }else if( posy >= out_dim_y - param.pads.y){
+                        if(kh >= k_dim_y - param.pads.y){
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            break;
+                        }
+                    }
+                    temp += k * in_;
+                    //temp_in = in_.a;
+                }
+            }
+              out_data_ = temp.r + temp.g + temp.b + temp.a;
+              //out_data.g = out_data_;
+              out_data.g += out_data_ ;
+              //out_data.g = k.a;
+              //out_data = temp_in;
+        }       
+        temp = vec4(0);
+        if(c_x_i > 2){
+            for(kh = 0; kh < param.filter_dim.b; kh++){
+                for(kw = 0; kw < param.filter_dim.a; kw++){
+
+                    k = texelFetch(ukernel, ivec3(c* k_dim_x+kw, kx_i + k_dim_y *2 + kh, 0), 0);
+                    //vec4 in_ = texelFetch(uInput, ivec3(x_i+pos.x%out_dim_x +kw, y_i+ pos.y%out_dim_y +kh, 0), 0);
+                    vec4 in_ = texelFetch(uInput, ivec3(in_x + kw ,  in_y + kh , 0), 0);
+                    if(posx < param.pads.x ){
+                        if(kw < param.pads.x){
+                            kw_i = 1;
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            continue;
+                        }
+                        
+                    } else if(posx >= out_dim_x - param.pads.x){
+                        if(kw >= k_dim_x - param.pads.x){
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            continue;
+                        }
+
+                    }
+                    if(posy < param.pads.y){
+                        if(kh < param.pads.y){
+                            kh_i =1;
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            break;
+                        }
+                    }else if( posy >= out_dim_y - param.pads.y){
+                        if(kh >= k_dim_y - param.pads.y){
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            break;
+                        }
+                    }
+                    temp += k * in_;
+
+                }
+            }
+              out_data_ = temp.r + temp.g + temp.b + temp.a;
+              out_data.b += out_data_;    
+                    //out_data =  vec4(3);
+                    //out_data = temp_in;
+        }      
+        temp = vec4(0);
+        if(c_x_i > 3){
+            for(kh = 0; kh < param.filter_dim.b; kh++){
+                for(kw = 0; kw < param.filter_dim.a; kw++){
+
+                    k = texelFetch(ukernel, ivec3(c* k_dim_x+kw, kx_i + k_dim_y *3 + kh, 0), 0);
+                    //vec4 in_ = texelFetch(uInput, ivec3(x_i+pos.x%out_dim_x +kw, y_i+ pos.y%out_dim_y +kh, 0), 0);
+                    vec4 in_ = texelFetch(uInput, ivec3(in_x + kw ,  in_y + kh , 0), 0);
+                    if(posx < param.pads.x ){
+                        if(kw < param.pads.x){
+                            kw_i = 1;
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            continue;
+                        }
+                        
+                    } else if(posx >= out_dim_x - param.pads.x){
+                        if(kw >= k_dim_x - param.pads.x){
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            continue;
+                        }
+
+                    }
+                    if(posy < param.pads.y){
+                        if(kh < param.pads.y){
+                            kh_i =1;
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            break;
+                        }
+                    }else if( posy >= out_dim_y - param.pads.y){
+                        if(kh >= k_dim_y - param.pads.y){
+                            in_=vec4(22);
+                            //in_=vec4(0);
+                            break;
+                        }
+                    }
+                    temp += k * in_;
+
+                }
+            }
+              out_data_ = temp.r + temp.g + temp.b + temp.a;
+              out_data.a +=out_data_;          
+                    //out_data =  vec4(4);
+                    //out_data = temp_in;
+        }
+        }
+        
+          //out_data = vec4(kx_i);
+                //out_data= vec4(param.input_dim.b);
+                //out_data = in_;
+                //out_data = vec4(y_i);
+        out_data += vec4(bias.data[c_i],bias.data[c_i+1],bias.data[c_i+2],bias.data[c_i+3]);
+        if(param.flag[1] == true){
+            out_data = max(out_data, vec4(0));
+        }
+            //out_data = max(out_data, vec4(0));
+            //out_data =  param.flag[1]
+#ifdef _RELU
+        out_data = max(out_data, vec4(0));
+#endif
+        imageStore(uOutput, pos, out_data);
+        //imageStore(uOutput, pos, max(out_data, vec4(0));
+
+    } 
+}

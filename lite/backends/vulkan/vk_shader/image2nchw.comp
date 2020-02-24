@@ -1,0 +1,74 @@
+#version 450 core
+layout(std430) buffer;
+layout(std430) uniform;
+layout(set=0, binding=0) uniform mediump sampler3D uInput;
+
+layout(set=0, binding=1) writeonly buffer destBuffer{
+    float data[];
+} uOutBuffer;
+
+layout(set=0, binding=2) uniform constBuffer{
+    int batch;
+    int channel;
+    int height;
+    int width;
+    int im_w;
+    int im_h;
+} uConstant;
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+void main()
+{
+    ivec3 pos = ivec3(gl_GlobalInvocationID);
+    //int channelC4 = (uConstant.channel + 3) / 4;
+    int c = uConstant.channel > 4 ? 4 : uConstant.channel; 
+    int im = uConstant.height* uConstant.width;
+    int imc = im * uConstant.channel;
+    int cIndex = uConstant.channel % 4;
+    int lastZ = uConstant.channel - cIndex;
+    int zz = uConstant.channel / 4 * uConstant.width;
+    
+    if (pos.x < uConstant.im_w && pos.y < uConstant.im_h)
+    {
+        int im_n_cnt = pos.y / uConstant.height ;
+        int im_w_cnt = pos.x / uConstant.width;
+        int im_n_cnt_ = pos.y % uConstant.height;
+        int im_w_cnt_ = pos.x % uConstant.width;
+
+        vec4 color = texelFetch(uInput, pos, 0);
+
+        int scale = im_n_cnt * imc;
+        scale += im_w_cnt * im * c;
+        scale += im_n_cnt_ * uConstant.width  + im_w_cnt_;
+
+        if(pos.x >= zz)
+        {
+
+            if(cIndex == 1)
+            {
+                uOutBuffer.data[scale] = color.r;
+            }
+            else if(cIndex == 2)
+            {
+                uOutBuffer.data[scale] = color.r;
+                uOutBuffer.data[scale+im] = color.g;
+            }
+            else
+            {
+                uOutBuffer.data[scale] = color.r;
+                uOutBuffer.data[scale+im] = color.g;
+                uOutBuffer.data[scale+2*im] = color.b;
+            }
+        }
+        else
+        {
+                uOutBuffer.data[scale] = color.r;
+                uOutBuffer.data[scale+im] = color.g;
+                uOutBuffer.data[scale+2*im] = color.b;
+                uOutBuffer.data[scale+3*im] = color.a;
+            
+        }
+    }
+
+}

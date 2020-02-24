@@ -1,0 +1,31 @@
+#version 450
+
+layout(std430) buffer;
+layout(std430) uniform;
+layout(set=0, binding=0) readonly buffer sourceBuffer{
+    float data[];
+} in_;
+layout(set=0, binding=1, rgba16f) writeonly restrict mediump uniform image2D out_;
+
+layout(set=0, binding=2) uniform constBuffer{
+    int height;
+    int width;
+    int im_w;
+    int im_h;
+} param;
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+void main()
+{
+    ivec2 pos = ivec2(gl_GlobalInvocationID);
+
+    int setp =4*param.width;
+    if (pos.x < param.im_w && pos.y < param.im_h)
+    {
+        int scale = pos.y*setp + pos.x;
+        vec4 data = vec4(in_.data[scale],in_.data[scale+param.width],in_.data[scale+2*param.width],in_.data[scale+3*param.width]);
+        imageStore(out_, pos, data);
+    }
+
+}

@@ -1,0 +1,81 @@
+#version 440 core
+layout(std430) buffer;
+layout(std430) uniform;
+layout(set=0, binding=0) uniform mediump sampler2D uInput;
+layout(set=0, binding=1, rgba16f) writeonly restrict mediump uniform image2D uOutput;
+
+
+layout(set=0, binding=2) uniform constBuffer {
+    ivec4 inputSize;
+    ivec4 outputSize;
+    ivec2 kernelSize;
+    ivec2 stride;
+    ivec2 pad;
+  ivec2 out_im;
+} uConstant;
+
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+/*
+void main()
+{
+    ivec3 pos = ivec3(gl_GlobalInvocationID);
+    ivec3 outputSize = uConstant.outputSize.xyz;
+    ivec2 spos = pos.xy*uConstant.stride-uConstant.pad;
+
+    if (all(lessThan(pos, outputSize)))
+    {
+        ivec2 inputSizeXY = uConstant.inputSize.xy;
+        //vec4 color = vec4(-100000.0);
+        vec4 color = vec4(0);
+        //ivec2 sfxy = max(ivec2(0), -spos);
+        //ivec2 efxy = min(uConstant.kernelSize, inputSizeXY-spos);
+        ivec2 sfxy = ivec2(0);
+        ivec2 efxy = uConstant.kernelSize;
+        for (int fy=sfxy.y; fy<efxy.y; ++fy)
+        {
+            for (int fx=sfxy.x; fx<efxy.x; ++fx)
+            {
+                ivec2 spos_ = spos + ivec2(fx, fy);
+                color = max(texelFetch(uInput, ivec3(spos_.x, spos_.y, 0), 0), color);
+                //color = vec4(uConstant.pad.x);
+            }
+        }
+        imageStore(uOutput, pos, color);
+    }
+}
+*/
+
+void main()
+{
+    ivec2 pos = ivec2(gl_GlobalInvocationID);
+    ivec2 outputSize = uConstant.out_im.xy;
+    ivec2 out_xy = uConstant.outputSize.ba;
+    ivec2 mod_xy = pos.xy % out_xy;
+    ivec2 div_xy = pos.xy / out_xy;
+    ivec2 spos = mod_xy*uConstant.stride-uConstant.pad;
+
+    if (all(lessThan(pos, outputSize)))
+    {
+        ivec2 inputSizeXY = uConstant.inputSize.ba;
+        ivec2 in_xy = div_xy * inputSizeXY;
+        vec4 color = vec4(-100000.0);
+        ivec2 sfxy = max(ivec2(0), -spos);
+        ivec2 efxy = min(uConstant.kernelSize, inputSizeXY-spos);
+
+        for (int fy=sfxy.y; fy<efxy.y; ++fy)
+        {
+            for (int fx=sfxy.x; fx<efxy.x; ++fx)
+            {
+                ivec2 spos_ = spos + ivec2(fx, fy) + in_xy;
+                color = max(texelFetch(uInput, ivec2(spos_.x, spos_.y), 0), color);
+                //color = vec4(efxy.x);
+                //color = vec4(inputSizeXY.x);
+                //color = vec4(spos.x,spos.y,0,0);
+            }
+        }
+                //color = vec4(div_xy.x);
+        imageStore(uOutput, pos, color);
+    }
+        //imageStore(uOutput, pos, vec4(pos.x,pos.y,uConstant.out_im.x,uConstant.out_im.y));
+
+}
