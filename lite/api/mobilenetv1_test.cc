@@ -21,6 +21,7 @@
 #include "lite/api/paddle_use_passes.h"
 #include "lite/api/test_helper.h"
 #include "lite/core/op_registry.h"
+#include "lite/kernels/vulkan/vulkan_utils.h"
 
 DEFINE_string(optimized_model, "", "optimized_model");
 DEFINE_int32(N, 1, "input_batch");
@@ -37,7 +38,6 @@ void TestModel(const std::vector<Place>& valid_places,
   DeviceInfo::Init();
   DeviceInfo::Global().SetRunMode(lite_api::LITE_POWER_NO_BIND, FLAGS_threads);
   lite::Predictor predictor;
-
   predictor.Build(model_dir, "", "", valid_places);
 
   auto* input_tensor = predictor.GetInput(0);
@@ -106,6 +106,96 @@ void TestModel(const std::vector<Place>& valid_places,
 #endif
 }
 
+void TestModelVK(const std::vector<Place>& valid_places,
+                 const std::string& model_dir1 = FLAGS_model_dir,
+                 bool save_model = false) {
+  DeviceInfo::Init();
+  DeviceInfo::Global().SetRunMode(lite_api::LITE_POWER_NO_BIND, FLAGS_threads);
+  lite::Predictor predictor;
+  std::string model_dir = "/data/local/tmp/mobilenet_v1";
+  predictor.Build(model_dir, "", "", valid_places);
+
+  auto context = ContextScheduler::Global().NewContext(TARGET(kVULKAN));
+
+  auto device = context->As<VULKANContext>().device();
+
+  auto* input_tensor_im = predictor.GetInput(0);
+  lite::Tensor input, input_vk;
+  lite::Tensor* input_tensor = &input;
+
+  // auto* input_tensor = predictor.GetInput(0);
+  input_tensor->Resize(DDim(std::vector<DDim::value_type>({1, 3, 224, 224})));
+  auto* data = input_tensor->mutable_data<float>();
+  auto item_size = input_tensor->dims().production();
+  for (int i = 0; i < item_size; i++) {
+    data[i] = 1;
+  }
+  kernels::vulkan::CopyToVulkan(device, &input, &input_vk);
+
+  kernels::vulkan::VulkanBuf2Image(
+      device, &input_vk, input_tensor_im, vulkan::BufTYPE::NCHW);
+  FLAGS_warmup = 1;
+  for (int i = 0; i < FLAGS_warmup; ++i) {
+    predictor.Run();
+  }
+  LOG(INFO) << "================== Warmup End ===================";
+  FLAGS_repeats = 2;
+  auto start = GetCurrentUS();
+  for (int i = 0; i < FLAGS_repeats; ++i) {
+    predictor.Run();
+  }
+
+  LOG(INFO) << "================== Speed Report ===================";
+  LOG(INFO) << "Model: " << model_dir << ", threads num " << FLAGS_threads
+            << ", warmup: " << FLAGS_warmup << ", repeats: " << FLAGS_repeats
+            << ", total time" << (GetCurrentUS() - start) / 1000.0 << " ms"
+            << ", spend " << (GetCurrentUS() - start) / FLAGS_repeats / 1000.0
+            << " ms in average.";
+
+  std::vector<std::vector<float>> ref;
+  ref.emplace_back(std::vector<float>(
+      {0.00019130898, 9.467885e-05,  0.00015971427, 0.0003650665,
+       0.00026431272, 0.00060884043, 0.0002107942,  0.0015819625,
+       0.0010323516,  0.00010079765, 0.00011006987, 0.0017364529,
+       0.0048292773,  0.0013995157,  0.0018453331,  0.0002428986,
+       0.00020211363, 0.00013668182, 0.0005855956,  0.00025901722}));
+  auto* out = predictor.GetOutput(0);
+  LOG(INFO) << "==================end1===================";
+
+  //   kernels::vulkan::VulkanRun(device);
+  // LOG(INFO)<<"copytohost_dim x:"<<param.x->dims();
+  //    VulkanImage2Buf(device, param.x, &t_vk, BufTYPE::NCHW);
+  // kernels::vulkan::PrintTensor(out,"mobileneth");
+
+  const auto* pdata = out->data<float>();
+  LOG(INFO) << "==================end1===================";
+  int step = 50;
+#ifdef LITE_WITH_NPU
+  ASSERT_EQ(out->dims().production(), 1000);
+  double eps = 0.1;
+  for (int i = 0; i < ref.size(); ++i) {
+    for (int j = 0; j < ref[i].size(); ++j) {
+      auto result = pdata[j * step + (out->dims()[1] * i)];
+      auto diff = std::fabs((result - ref[i][j]) / ref[i][j]);
+      VLOG(3) << diff;
+      EXPECT_LT(diff, eps);
+    }
+  }
+#else
+  ASSERT_EQ(out->dims().size(), 2);
+  ASSERT_EQ(out->dims()[0], 1);
+  ASSERT_EQ(out->dims()[1], 1000);
+  double eps = 2e-4;
+  for (int i = 0; i < ref.size(); ++i) {
+    for (int j = 0; j < ref[i].size(); ++j) {
+      auto result = pdata[j * step + (out->dims()[1] * i)];
+      LOG(INFO) << i << " result:" << result << "ref:" << ref[i][j];
+      EXPECT_NEAR(result, ref[i][j], eps);
+    }
+  }
+#endif
+}
+
 #ifdef LITE_WITH_NPU
 TEST(MobileNetV1, test_npu) {
   std::vector<Place> valid_places({
@@ -118,7 +208,7 @@ TEST(MobileNetV1, test_npu) {
   TestModel(valid_places, FLAGS_optimized_model, false /* save model */);
 }
 #endif  // LITE_WITH_NPU
-
+/*
 TEST(MobileNetV1, test_arm) {
   std::vector<Place> valid_places({
       Place{TARGET(kARM), PRECISION(kFloat)},
@@ -126,7 +216,7 @@ TEST(MobileNetV1, test_arm) {
 
   TestModel(valid_places);
 }
-
+*/
 #ifdef LITE_WITH_OPENCL
 TEST(MobileNetV1, test_opencl) {
   std::vector<Place> valid_places({
@@ -140,6 +230,18 @@ TEST(MobileNetV1, test_opencl) {
   TestModel(valid_places);
 }
 #endif  // LITE_WITH_OPENCL
+
+#ifdef LITE_WITH_VULKAN
+TEST(MobileNetV1, test_vulkan) {
+  LOG(INFO) << "--------------test_vulkan--------------------";
+  std::vector<Place> valid_places({
+      Place{TARGET(kVULKAN), PRECISION(kFloat)},
+      Place{TARGET(kARM), PRECISION(kFloat)},
+  });
+
+  TestModelVK(valid_places);
+}
+#endif  // LITE_WITH_VULKAN
 
 }  // namespace lite
 }  // namespace paddle
