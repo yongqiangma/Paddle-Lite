@@ -369,7 +369,7 @@ VulkanImage* VulkanDevice::CreateImage(VkImageType imageType,
   VLOG(5) << "vkBindImageMemory !!!!";
 
   vkBindImageMemory(device, im->image, im->devicemem, 0);
-  CreateImageView(im->view, im->image, viewType, format);
+  CreateImageView(&(im->view), im->image, viewType, format);
   VLOG(5) << "vkCreateImage !!!!";
   images.push_back(im);
   return im;
@@ -440,7 +440,7 @@ void VulkanDevice::AllocateMemmory(VkMemoryRequirements* memoryRequirements,
   res = vkAllocateMemory(device, &info, nullptr, mem);
   if (res) LOG(FATAL) << "Vulkan AllocateMemory error!";
 }
-void VulkanDevice::CreateImageView(VkImageView& view,
+void VulkanDevice::CreateImageView(VkImageView* view,
                                    const VkImage& image,
                                    const VkImageViewType& type,
                                    const VkFormat& format) {
@@ -456,7 +456,7 @@ void VulkanDevice::CreateImageView(VkImageView& view,
   info.subresourceRange.layerCount = 1;
   VLOG(5) << "vkCreateImageView !!!!";
 
-  res = vkCreateImageView(device, &info, nullptr, &view);
+  res = vkCreateImageView(device, &info, nullptr, view);
   if (res) LOG(FATAL) << "Vulkan Create ImageView error!";
 }
 

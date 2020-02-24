@@ -119,7 +119,7 @@ class VulkanDevice {
                        VkDeviceMemory* mem,
                        VkFlags memTpye);
 
-  void CreateImageView(const VkImageView& view,
+  void CreateImageView(VkImageView* view,
                        const VkImage& image,
                        const VkImageViewType& type,
                        const VkFormat& format);
