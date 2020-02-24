@@ -29,6 +29,10 @@
 #include "lite/backends/bm/target_wrapper.h"
 #endif  // LITE_WITH_BM
 
+#ifdef LITE_WITH_VULKAN
+#include "lite/backends/vulkan/target_wrapper.h"
+#endif  // LITE_WITH_VULKAN
+
 namespace paddle {
 namespace lite {
 
@@ -81,6 +85,11 @@ void CopySync(void* dst, const void* src, size_t size, IoDirection dir) {
       TargetWrapper<TARGET(kBM)>::MemcpySync(dst, src, size, dir);
       break;
 #endif
+#ifdef LITE_WITH_VULKAN
+    case TARGET(kVULKAN):
+      TargetWrapper<TARGET(kVULKAN)>::MemcpySync(dst, src, size, dir);
+      break;
+#endif
   }
 }
 
@@ -125,6 +134,20 @@ class Buffer {
   }
 #endif
 
+#ifdef LITE_WITH_VULKAN
+  template <typename T>
+  void ResetLazyImage2D(TargetType target,
+                        const uint32_t img_w,
+                        const uint32_t img_h) {
+    size_t size = sizeof(T) * img_w * img_h * 4;
+    if (target != target_ || space_ < size) {
+      Free();
+      data_ = TargetWrapperVulkan::MallocImage<T>(img_w, img_h);
+      target_ = target;
+      space_ = size;  // un-used for vulkan Image2D
+    }
+  }
+#endif
   void Free() {
     if (space_ > 0) {
       TargetFree(target_, data_);

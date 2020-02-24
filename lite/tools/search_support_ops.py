@@ -33,7 +33,7 @@ if os.path.exists(kernels_file):
     kernel_types = [
         "kARM, kFloat", "kARM, kInt8", "kARM, kAny", "kX86, kFloat",
         "kX86, kInt8", "kX86, kAny", "kOpenCL, kFloat", "kOpenCL, kInt8",
-        "kOpenCL, kAny"
+        "kOpenCL, kAny", "kVULKAN, kFloat"
     ]
     patterns = []
     for type in kernel_types:

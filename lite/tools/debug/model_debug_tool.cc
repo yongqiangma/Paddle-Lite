@@ -47,6 +47,9 @@ void Run(DebugConfig* conf) {
 #ifdef LITE_WITH_CUDA
       Place{TARGET(kCUDA), PRECISION(kFloat)},
 #endif
+#ifdef LITE_WITH_VULKAN
+      Place{TARGET(kVULKAN), PRECISION(kFloat)},
+#endif
   });
 
   std::vector<std::string> passes{{

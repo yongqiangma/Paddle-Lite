@@ -103,6 +103,9 @@ std::list<std::unique_ptr<KernelBase>> KernelRegistry::Create(
     case TARGET(kBM): {
       CREATE_KERNEL(kBM);
     } break;
+    case TARGET(kVULKAN): {
+      CREATE_KERNEL(kVULKAN);
+    } break;
     default:
       CHECK(false) << "not supported kernel target " << TargetToStr(target);
   }
@@ -194,6 +197,8 @@ KernelRegistry::KernelRegistry()
   INIT_FOR(kBM, kInt8, kNCHW);
   INIT_FOR(kBM, kAny, kNCHW);
   INIT_FOR(kBM, kAny, kAny);
+
+  INIT_FOR(kVULKAN, kFloat, kNCHW);
 #undef INIT_FOR
 }
 

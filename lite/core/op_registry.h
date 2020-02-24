@@ -263,7 +263,11 @@ class KernelRegistry final {
                                       DATALAYOUT(kAny)> *,  //
               KernelRegistryForTarget<TARGET(kFPGA),
                                       PRECISION(kAny),
-                                      DATALAYOUT(kAny)> *  //
+                                      DATALAYOUT(kAny)> *,  //
+
+              KernelRegistryForTarget<TARGET(kVULKAN),
+                                      PRECISION(kFloat),
+                                      DATALAYOUT(kNCHW)> *  //
               >;
 
   KernelRegistry();

@@ -173,6 +173,16 @@ class TensorLite {
   void *mutable_data(size_t memory_size);
   void *mutable_data(TargetType target, size_t memory_size);
 
+#ifdef LITE_WITH_VULKAN
+  template <typename T, typename R = T>
+  R *mutable_data(TargetType target, const size_t img_w, const size_t img_h) {
+    target_ = target;
+    buffer_->ResetLazyImage2D<T>(target, img_w, img_h);
+    return reinterpret_cast<R *>(static_cast<char *>(buffer_->data()) +
+                                 offset_);
+  }
+#endif
+
   const void *raw_data() const {
     return static_cast<char *>(
         (static_cast<char *>(buffer_->data()) + offset_));

@@ -20,11 +20,16 @@ BUILD_DIR=$(pwd)
 OPTMODEL_DIR=""
 BUILD_TAILOR=OFF
 BUILD_CV=OFF
-SHUTDOWN_LOG=ON
+SHUTDOWN_LOG=OFF
 
 readonly THIRDPARTY_TAR=https://paddle-inference-dist.bj.bcebos.com/PaddleLite/third-party-05b862.tar.gz
 
 readonly workspace=$PWD
+
+export VULKAN_SDK=/code/vulkan/vulkan1.1.92.1/x86_64
+export PATH="$VULKAN_SDK/bin:$PATH"
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$VULKAN_SDK/lib:${LD_LIBRARY_PATH:-}"
+export VK_LAYER_PATH="$VULKAN_SDK/etc/explicit_layer.d"
 
 # if operating in mac env, we should expand the maximum file num
 os_nmae=`uname -s`
@@ -279,6 +284,46 @@ function make_x86 {
   cd -
 }
 
+function make_vulkan {
+  local os=$1
+  local abi=$2
+  local lang=$3
+  local android_stl=$4
+  #git submodule update --init --recursive
+  prepare_thirdparty
+
+  root_dir=$(pwd)
+  build_directory=$BUILD_DIR/build.lite.${os}.${abi}.${lang}.vulkan
+
+  mkdir -p $build_directory
+  cd $build_directory
+  
+  if [ ${os} == "armlinux" ]; then
+    BUILD_JAVA=OFF
+  fi
+
+  prepare_workspace $root_dir $build_directory
+  cmake $root_dir \
+      ${PYTHON_FLAGS} \
+      ${CMAKE_COMMON_OPTIONS} \
+      -DLITE_WITH_VULKAN=ON \
+      -DWITH_TESTING=ON \
+      -DLITE_WITH_JAVA=$BUILD_JAVA \
+      -DLITE_WITH_PYTHON=$BUILD_PYTHON \
+      -DLITE_WITH_PROFILE=OFF \
+      -DLITE_WITH_PRECISION_PROFILE=OFF \
+      -DLITE_SHUTDOWN_LOG=$SHUTDOWN_LOG \
+      -DANDROID_STL_TYPE=$android_stl \
+      -DLITE_BUILD_EXTRA=$BUILD_EXTRA \
+      -DLITE_BUILD_TAILOR=$BUILD_TAILOR \
+	  -DLITE_WITH_CV=$BUILD_CV \
+      -DLITE_OPTMODEL_DIR=$OPTMODEL_DIR \
+      -DARM_TARGET_OS=${os} -DARM_TARGET_ARCH_ABI=${abi} -DARM_TARGET_LANG=${lang}
+
+  #make publish_inference -j4
+  make publish_inference
+  cd - > /dev/null
+}
 function print_usage {
     set +x
     echo -e "\nUSAGE:"
@@ -404,6 +449,10 @@ function main {
                 ;;
             x86)
                make_x86
+               shift
+               ;;
+            vulkan)
+               make_vulkan $ARM_OS $ARM_ABI $ARM_LANG $ANDROID_STL
                shift
                ;;
             *)

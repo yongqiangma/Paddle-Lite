@@ -1,0 +1,31 @@
+
+    MESSAGE(STATUS "-----------Vulkan_LIBRARY--------${Vulkan_LIBRARY}")
+
+if (NOT LITE_WITH_VULKAN)
+    return()
+endif()
+    set(ANDROID_PLATFORM "android-24")
+    MESSAGE(STATUS "-----------Vulkan_LIBRARY--------${Vulkan_LIBRARY}")
+    if(ANDROID_ARCH_ABI STREQUAL armeabi-v7a)
+        set(ANDROID_SYSROOT_ABI arm)
+    elseif(ANDROID_ARCH_ABI STREQUAL arm64-v8a)
+        set(ANDROID_SYSROOT_ABI arm64)
+    endif()
+    if(NOT IS_DIRECTORY "${ANDROID_NDK}/platforms/${ANDROID_PLATFORM}")
+        message(FATAL_ERROR "Invalid Android platform: ${ANDROID_PLATFORM}.")
+    elseif(NOT IS_DIRECTORY "${CMAKE_SYSROOT}")
+        message(FATAL_ERROR "Invalid Android sysroot: ${CMAKE_SYSROOT}.")
+    endif()
+    set(ANDROID_SYSTEM_LIBRARY_PATH
+        "${ANDROID_NDK}/platforms/${ANDROID_PLATFORM}/arch-${ANDROID_SYSROOT_ABI}")
+    list(APPEND CMAKE_SYSTEM_LIBRARY_PATH
+            "${ANDROID_SYSTEM_LIBRARY_PATH}/usr/lib")
+
+    find_package(Vulkan REQUIRED)
+    #set(Vulkan_LIBRARY "/opt/android-ndk-r17c/platforms/android-24/arch-arm64/usr/lib/libvulkan.so")
+    #set(Vulkan_INCLUDE_DIR "/opt/android-ndk-r17c/sysroot/usr/include/")
+    #set(Vulkan_LIBRARY "/Users/mayongqiang01/code/android-ndk-r16b/platforms/android-24/arch-arm64/usr/lib/libvulkan.so")
+    #set(Vulkan_INCLUDE_DIR "/Users/mayongqiang01/code/android-ndk-r16b/sysroot/usr/include/")
+    MESSAGE(STATUS "-----------Vulkan_LIBRARY--------${Vulkan_LIBRARY}")
+    include_directories(${Vulkan_INCLUDE_DIR})
+    MESSAGE(STATUS "-----------Vulkan_INDLUDE--------${Vulkan_INCLUDE_DIR}")
