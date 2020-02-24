@@ -7,6 +7,7 @@ lite_cc_library(target_wrapper SRCS target_wrapper.cc
   CUDA_DEPS target_wrapper_cuda
   CL_DEPS cl_target_wrapper
   FPGA_DEPS fpga_target_wrapper
+  VK_DEPS vulkan_target_wrapper
   BM_DEPS target_wrapper_bm)
 
 lite_cc_library(memory SRCS memory.cc DEPS target_wrapper CL_DEPS cl_target_wrapper)
@@ -34,9 +35,9 @@ lite_cc_library(scope SRCS scope.cc DEPS tensor)
 lite_cc_library(device_info SRCS device_info.cc DEPS tensor)
 
 if (LITE_WITH_ARM)
-lite_cc_library(context SRCS context.cc DEPS tensor any device_info CL_DEPS cl_context gflags)
+lite_cc_library(context SRCS context.cc DEPS tensor any device_info CL_DEPS cl_context gflags  VK_DEPS vulkan_device_info)
 else()
-lite_cc_library(context SRCS context.cc DEPS tensor any device_info eigen3 CL_DEPS cl_context gflags)
+lite_cc_library(context SRCS context.cc DEPS tensor any device_info eigen3 CL_DEPS cl_context gflags  VK_DEPS vulkan_device_info)
 endif()
 
 #-------------------------------------------- GET CODE META INFO ------------------------------------------

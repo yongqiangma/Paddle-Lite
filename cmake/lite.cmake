@@ -22,7 +22,7 @@ endfunction()
 function (lite_deps TARGET)
   set(options "")
   set(oneValueArgs "")
-  set(multiValueArgs DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS LIGHT_DEPS HVY_DEPS CL_DEPS FPGA_DEPS BM_DEPS NPU_DEPS XPU_DEPS CV_DEPS ARGS)
+  set(multiValueArgs DEPS X86_DEPS CUDA_DEPS ARM_DEPS PROFILE_DEPS LIGHT_DEPS HVY_DEPS CL_DEPS FPGA_DEPS BM_DEPS NPU_DEPS XPU_DEPS CV_DEPS VK_DEPS ARGS)
   cmake_parse_arguments(lite_deps "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   set(deps ${lite_deps_DEPS})
@@ -100,6 +100,12 @@ function (lite_deps TARGET)
     endforeach(var)
   endif()
 
+  if (LITE_WITH_VULKAN)
+    foreach(var ${lite_deps_VK_DEPS})
+      set(deps ${deps} ${var})
+    endforeach(var)
+   endif()
+   
   set(${TARGET} ${deps} PARENT_SCOPE)
 endfunction()
 
@@ -125,7 +131,7 @@ file(WRITE ${offline_lib_registry_file} "") # clean
 function(lite_cc_library TARGET)
     set(options SHARED shared STATIC static MODULE module)
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS FPGA_DEPS BM_DEPS NPU_DEPS XPU_DEPS CV_DEPS PROFILE_DEPS LIGHT_DEPS
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS FPGA_DEPS BM_DEPS NPU_DEPS XPU_DEPS CV_DEPS  VK_DEPS PROFILE_DEPS LIGHT_DEPS
       HVY_DEPS EXCLUDE_COMPILE_DEPS ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -144,6 +150,7 @@ function(lite_cc_library TARGET)
             PROFILE_DEPS ${args_PROFILE_DEPS}
             LIGHT_DEPS ${args_LIGHT_DEPS}
             HVY_DEPS ${args_HVY_DEPS}
+            VK_DEPS ${args_VK_DEPS}
             )
 
     if (args_SHARED OR ARGS_shared)
@@ -170,7 +177,7 @@ function(lite_cc_binary TARGET)
         set(options " -g ")
     endif()
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS FPGA_DEPS BM_DEPS NPU_DEPS XPU_DEPS PROFILE_DEPS
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS FPGA_DEPS BM_DEPS NPU_DEPS XPU_DEPS VK_DEPS PROFILE_DEPS
       LIGHT_DEPS HVY_DEPS EXCLUDE_COMPILE_DEPS CV_DEPS ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -189,6 +196,7 @@ function(lite_cc_binary TARGET)
             LIGHT_DEPS ${args_LIGHT_DEPS}
             HVY_DEPS ${args_HVY_DEPS}
             CV_DEPS ${CV_DEPS}
+	    VK_DEPS ${args_VK_DEPS}
             )
     cc_binary(${TARGET} SRCS ${args_SRCS} DEPS ${deps})
     target_compile_options(${TARGET} BEFORE PRIVATE -Wno-ignored-qualifiers)
@@ -218,7 +226,7 @@ function(lite_cc_test TARGET)
     endif()
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS FPGA_DEPS BM_DEPS NPU_DEPS XPU_DEPS PROFILE_DEPS
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS FPGA_DEPS BM_DEPS NPU_DEPS XPU_DEPS VK_DEPS PROFILE_DEPS
         LIGHT_DEPS HVY_DEPS EXCLUDE_COMPILE_DEPS CV_DEPS
         ARGS
         COMPILE_LEVEL # (basic|extra)
@@ -245,6 +253,7 @@ function(lite_cc_test TARGET)
               LIGHT_DEPS ${args_LIGHT_DEPS}
               HVY_DEPS ${args_HVY_DEPS}
               CV_DEPS ${args_CV_DEPS}
+	      VK_DEPS ${args_VK_DEPS}
               )
     _lite_cc_test(${TARGET} SRCS ${args_SRCS} DEPS ${deps} ARGS ${args_ARGS})
     # strip binary target to reduce size
@@ -280,12 +289,12 @@ if(LITE_BUILD_TAILOR)
   file(STRINGS ${tailored_kernels_list_path} tailored_kernels_list)
 endif()
 # add a kernel for some specific device
-# device: one of (Host, ARM, X86, NPU, FPGA, OPENCL, CUDA, BM)
+# device: one of (Host, ARM, X86, NPU, FPGA, OPENCL, CUDA, BM, VULKAN)
 # level: one of (basic, extra)
 function(add_kernel TARGET device level)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS FPGA_DEPS BM_DEPS NPU_DEPS XPU_DEPS PROFILE_DEPS
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS FPGA_DEPS BM_DEPS NPU_DEPS XPU_DEPS VK_DEPS PROFILE_DEPS
         LIGHT_DEPS HVY_DEPS EXCLUDE_COMPILE_DEPS
         ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -363,7 +372,12 @@ function(add_kernel TARGET device level)
         endif()
         set(opencl_kernels "${opencl_kernels};${TARGET}" CACHE INTERNAL "")
     endif()
-
+    if ("${device}" STREQUAL "VULKAN")
+        if (NOT LITE_WITH_VULKAN)
+            return()
+        endif()
+        set(vulkan_kernels "${vulkan_kernels};${TARGET}" CACHE INTERNAL "")
+    endif()
     if ("${device}" STREQUAL "CUDA")
         if (NOT LITE_WITH_CUDA)
             return()
@@ -394,6 +408,7 @@ function(add_kernel TARGET device level)
               PROFILE_DEPS ${args_PROFILE_DEPS}
               LIGHT_DEPS ${args_LIGHT_DEPS}
               HVY_DEPS ${args_HVY_DEPS}
+              VK_DEPS ${args_VK_DEPS}
       )
 endfunction()
 
@@ -409,7 +424,7 @@ endif()
 function(add_operator TARGET level)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS FPGA_DEPS BM_DEPS NPU_DEPS XPU_DEPS PROFILE_DEPS
+    set(multiValueArgs SRCS DEPS X86_DEPS CUDA_DEPS CL_DEPS ARM_DEPS FPGA_DEPS BM_DEPS NPU_DEPS XPU_DEPS VK_DEPS PROFILE_DEPS
         LIGHT_DEPS HVY_DEPS EXCLUDE_COMPILE_DEPS
         ARGS)
     cmake_parse_arguments(args "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -445,6 +460,7 @@ function(add_operator TARGET level)
               PROFILE_DEPS ${args_PROFILE_DEPS}
               LIGHT_DEPS ${args_LIGHT_DEPS}
               HVY_DEPS ${args_HVY_DEPS}
+              VK_DEPS ${args_VK_DEPS}
       )
 endfunction()
 

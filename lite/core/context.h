@@ -25,6 +25,13 @@
 #include "lite/backends/opencl/cl_context.h"
 #include "lite/backends/opencl/cl_runtime.h"
 #endif
+#ifdef LITE_WITH_VULKAN
+#define VK_USE_PLATFORM_ANDROID_KHR 1
+#include <vulkan/vulkan.h>
+
+#include "lite/backends/vulkan/vk_command.h"
+#include "lite/backends/vulkan/vk_device.h"
+#endif
 
 #include <map>
 #include <memory>
@@ -56,6 +63,7 @@ using XPUContext = Context<TargetType::kXPU>;
 using OpenCLContext = Context<TargetType::kOpenCL>;
 using FPGAContext = Context<TargetType::kFPGA>;
 using BMContext = Context<TargetType::kBM>;
+using VULKANContext = Context<TargetType::kVULKAN>;
 
 template <>
 class Context<TargetType::kHost> {
@@ -317,6 +325,34 @@ class Context<TargetType::kOpenCL> {
 };
 #endif
 
+#ifdef LITE_WITH_VULKAN
+template <>
+class Context<TargetType::kVULKAN> {
+ public:
+  Context() {}
+
+  // NOTE: InitOnce should only be used by ContextScheduler
+  void InitOnce() {
+    vk_dev = std::make_shared<vulkan::VulkanDevice>();
+    vk_cmd = std::make_shared<vulkan::VulkanCommand>(vk_dev);
+    vk_dev->CreateCommandPool();
+  }
+
+  void CopySharedTo(VULKANContext* ctx) {
+    ctx->vk_dev = vk_dev;
+    ctx->vk_cmd = vk_cmd;
+  }
+
+  std::string name() const { return "VULKANContext"; }
+  std::shared_ptr<vulkan::VulkanDevice> device() { return vk_dev; }
+  std::shared_ptr<vulkan::VulkanCommand> command() { return vk_cmd; }
+
+ private:
+  std::shared_ptr<vulkan::VulkanDevice> vk_dev;
+  std::shared_ptr<vulkan::VulkanCommand> vk_cmd;
+};
+#endif
+
 // Context for running a kernel.
 // Holds the necessary resource and information.
 class KernelContext {
@@ -399,6 +435,12 @@ class ContextScheduler {
             &ctx->As<BMContext>());
         break;
 #endif
+#ifdef LITE_WITH_VULKAN
+      case TARGET(kVULKAN):
+        kernel_contexts_[TargetType::kVULKAN].As<VULKANContext>().CopySharedTo(
+            &ctx->As<VULKANContext>());
+        break;
+#endif
       default:
 #ifndef LITE_ON_MODEL_OPTIMIZE_TOOL
         LOG(FATAL) << "unsupported target " << TargetToStr(target);
@@ -439,6 +481,9 @@ class ContextScheduler {
 #endif
 #ifdef LITE_WITH_BM
     InitContext<TargetType::kBM, BMContext>();
+#endif
+#ifdef LITE_WITH_VULKAN
+    InitContext<TargetType::kVULKAN, VULKANContext>();
 #endif
   }
 

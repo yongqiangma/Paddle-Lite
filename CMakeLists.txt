@@ -27,9 +27,10 @@ set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 set(CMAKE_CXX_STANDARD 11)
 
 include(system)
-include(cross_compiling/preproject)
 
+include(cross_compiling/preproject)
 project(paddle CXX C)
+
 message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
         "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
@@ -58,6 +59,7 @@ lite_option(LITE_WITH_PYTHON "Enable Python api lib in lite mode" OFF)
 lite_option(LITE_WITH_CUDA "Enable CUDA in lite mode" OFF)
 lite_option(LITE_WITH_X86  "Enable X86 in lite mode"  ON)
 lite_option(LITE_WITH_ARM  "Enable ARM in lite mode"  OFF)
+lite_option(LITE_WITH_VULKAN   "Enable VULKAN support in lite" OFF)
 lite_option(LITE_WITH_NPU  "Enable NPU in lite mode"  OFF)
 lite_option(LITE_WITH_XPU  "Enable XPU in lite mode"  OFF)
 lite_option(LITE_WITH_BM   "Enable BM in lite mode"   OFF)
@@ -153,6 +155,10 @@ if (WITH_LITE AND LITE_WITH_LIGHT_WEIGHT_FRAMEWORK)
     include(generic)            # simplify cmake module
     include(configure)          # add paddle env configuration
 
+
+    if(LITE_WITH_VULKAN) 
+        include(vulkan)
+    endif()
     add_subdirectory(lite)
     return()
 endif()

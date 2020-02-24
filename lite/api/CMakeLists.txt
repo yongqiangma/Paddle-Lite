@@ -45,7 +45,9 @@ else()
     if ((ARM_TARGET_OS STREQUAL "android") OR (ARM_TARGET_OS STREQUAL "armlinux"))
         add_library(paddle_light_api_shared SHARED "")
         target_sources(paddle_light_api_shared PUBLIC ${__lite_cc_files} paddle_api.cc light_api.cc light_api_impl.cc)
-        set_target_properties(paddle_light_api_shared PROPERTIES COMPILE_FLAGS "-flto -fdata-sections")
+        #set_target_properties(paddle_light_api_shared PROPERTIES COMPILE_FLAGS "-flto -fdata-sections")
+        set_target_properties(paddle_light_api_shared PROPERTIES COMPILE_FLAGS "-fdata-sections")
+message(STATUS "api_COMPILE_FLAGS_CMAKE_CXX_FLAGS########################:${CMAKE_CXX_FLAGS}")
         add_dependencies(paddle_light_api_shared op_list_h kernel_list_h)
         if (LITE_WITH_NPU)
             # Need to add HIAI runtime libs (libhiai.so) dependency
@@ -196,6 +198,7 @@ if(LITE_WITH_LIGHT_WEIGHT_FRAMEWORK AND WITH_TESTING)
        DEPS ${lite_model_test_DEPS}
        CL_DEPS ${opencl_kernels}
        NPU_DEPS ${npu_kernels} ${npu_bridges}
+       VK_DEPS ${vulkan_kernels} ${lite_kernel_deps} vulkan_utils_vulkan vulkan_device_info  vulkan_target_wrapper
        ARGS --cl_path=${CMAKE_SOURCE_DIR}/lite/backends/opencl
             --model_dir=${LITE_MODEL_DIR}/mobilenet_v1 SERIAL)
     add_dependencies(test_mobilenetv1 extern_lite_download_mobilenet_v1_tar_gz)
@@ -329,6 +332,7 @@ if(NOT IOS)
         BM_DEPS ${bm_kernels}
         FPGA_DEPS ${fpga_kernels}
         X86_DEPS ${x86_kernels}
+	VK_DEPS ${vulkan_kernels}
         CUDA_DEPS ${cuda_kernels})
 
     lite_cc_binary(benchmark_bin SRCS benchmark.cc DEPS paddle_api_full paddle_api_light gflags utils
