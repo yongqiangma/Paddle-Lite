@@ -21,8 +21,8 @@
 #include <utility>
 #include <vector>
 
-#include "lite/backends/vulkan/shader_header.h"
 #include "lite/backends/vulkan/shader_hex.h"
+#include "lite/backends/vulkan/shader_header.h"
 #include "lite/core/tensor.h"
 #include "lite/utils/cp_logging.h"
 
