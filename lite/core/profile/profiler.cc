@@ -122,7 +122,13 @@ std::string Profiler::Summary(Type type, bool concise, size_t w) {
   using std::left;
   using std::fixed;
   using std::setprecision;
-  STL::stringstream ss;
+  #ifndef LITE_WITH_XCODE
+STL::stringstream ss;
+#else
+std::stringstream ss;
+#endif
+  // STL::stringstream ss;
+  
   std::string title;
   // Title.
   if (concise) {

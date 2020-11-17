@@ -76,50 +76,51 @@ class KernelBase {
   }
 #endif
 
-  void Launch() {
-    /// First run, init kernel, do weights transform once
-    if (is_first_epoch_) {
-      PrepareForRun();
-      is_first_epoch_ = false;
-    }
-    /// re-init the kernel if needed (input shape should be checked in conv
-    /// kernel)
-    ReInitWhenNeeded();
+  void Launch();
+//   void Launch() {
+//     /// First run, init kernel, do weights transform once
+//     if (is_first_epoch_) {
+//       PrepareForRun();
+//       is_first_epoch_ = false;
+//     }
+//     /// re-init the kernel if needed (input shape should be checked in conv
+//     /// kernel)
+//     ReInitWhenNeeded();
 
-    // Reset the workspace to make every kernel in the same thread to share the
-    // temporary memory.
-    WorkSpace::Global_Host().AllocReset();
-#if defined(LITE_WITH_X86)
-    WorkSpace::Global_X86().AllocReset();
-#endif
-#if defined(LITE_WITH_CUDA)
-    WorkSpace::Global_CUDA().AllocReset();
-#endif
-#if defined(LITE_WITH_MLU)
-    WorkSpace::Global_MLU().AllocReset();
-#endif
+//     // Reset the workspace to make every kernel in the same thread to share the
+//     // temporary memory.
+//     WorkSpace::Global_Host().AllocReset();
+// #if defined(LITE_WITH_X86)
+//     WorkSpace::Global_X86().AllocReset();
+// #endif
+// #if defined(LITE_WITH_CUDA)
+//     WorkSpace::Global_CUDA().AllocReset();
+// #endif
+// #if defined(LITE_WITH_MLU)
+//     WorkSpace::Global_MLU().AllocReset();
+// #endif
 
-#ifdef LITE_WITH_PROFILE
-    if (!is_kernel_test_) {
-      profiler_->StopTiming(profile::Type::kCreate, profile_id_, ctx_.get());
-      profiler_->StartTiming(profile::Type::kDispatch, profile_id_, ctx_.get());
-    }
+// #ifdef LITE_WITH_PROFILE
+//     if (!is_kernel_test_) {
+//       profiler_->StopTiming(profile::Type::kCreate, profile_id_, ctx_.get());
+//       profiler_->StartTiming(profile::Type::kDispatch, profile_id_, ctx_.get());
+//     }
 
-    Run();
+//     Run();
 
-    if (is_first_epoch_for_profiler_ && (!is_kernel_test_)) {
-      SetProfileRuntimeKernelInfo(profiler_->GetOpCharacter(profile_id_));
-      is_first_epoch_for_profiler_ = false;
-    }
+//     if (is_first_epoch_for_profiler_ && (!is_kernel_test_)) {
+//       SetProfileRuntimeKernelInfo(profiler_->GetOpCharacter(profile_id_));
+//       is_first_epoch_for_profiler_ = false;
+//     }
 
-    if (!is_kernel_test_) {
-      profiler_->StopTiming(profile::Type::kDispatch, profile_id_, ctx_.get());
-    }
+//     if (!is_kernel_test_) {
+//       profiler_->StopTiming(profile::Type::kDispatch, profile_id_, ctx_.get());
+//     }
 
-#else
-    Run();
-#endif
-  }
+// #else
+//     Run();
+// #endif
+//   }
 
   void SetContext(std::unique_ptr<KernelContext>&& ctx) {
     ctx_ = std::move(ctx);
